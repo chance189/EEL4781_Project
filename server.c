@@ -6,7 +6,7 @@
 
 
 
-int DEBUG = 1;   //define global for debug
+int DEBUG = 0;   //define global for debug
 
 //Assumes file exists already when called
 int file_size(char * file_name) {
