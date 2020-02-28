@@ -10,13 +10,13 @@ The client and server are agreeing to what information is sent or received based
 
 The struct has explicit size using unsigned integers, with a width of each ensuring no overflow could occur. This way, there is not issue in reading out information from the socket, as it will always be the same number of bytes.
 
-# Debug
+## Debug
 
 In the server class, you can toggle the Debug global variable to denote whether to see debug messages. These include the percentage (in units of 10%) displayed out to stdout. 
 The above also includes when the file has finished sending.
 
 The client will only print out error messages, from parsing the struct sent by the server. Occasionally, a client request will hang. To fix this, do a keyboard interrupt from the console, and retry the command. 
 
-# Author
+## Author
 
 * Chance Reimer
