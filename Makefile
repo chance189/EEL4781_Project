@@ -9,7 +9,7 @@
 # by default Make will build the first target - so here we define the
 # first target "all", which depends on target "server"
 all: 
-	gcc -o server server.c ${LIBS}
+	gcc -pthread -o server server.c ${LIBS}
 	gcc -o client client.c ${LIBS}
 
 clean:
