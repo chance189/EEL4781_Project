@@ -79,7 +79,7 @@ void eval_client_request(MSG_PACKET* packet, char* file_name, int*start, int*end
             return;
     }
 
-    printf("Size of File: %d, start: %d, start > size: %d\n", *size_file, *start, *start > *size_file);
+    //printf("Size of File: %d, start: %d, start > size: %d\n", *size_file, *start, *start > *size_file);
 
     if(*start >= *end || *start > *size_file)
         packet->ERR_NO = FAIL_BYTE_RANGE_INV;
@@ -141,21 +141,21 @@ int main(int argc, char *argv[])
         packet = malloc(sizeof(MSG_PACKET));                         //Allocate MEM
         memcpy(packet, buf, sizeof(MSG_PACKET));                     //Copy to ptr
         
-        printf("RECEIVED PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n", 
+        /*printf("RECEIVED PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n", 
                 packet->MSG_TYPE, packet->ERR_NO, packet->START_BYTE, 
                 packet->END_BYTE, packet->BYTE_VAL_FLAG); 
+        */
         //Generate the reply packet, and setup our values
         eval_client_request(packet, file_name, &start, &end, &size_file, &rw);
 
         write(sa, packet, sizeof(MSG_PACKET));
 
-        printf("SENT PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n",
+        /*printf("SENT PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n",
                 packet->MSG_TYPE, packet->ERR_NO, packet->START_BYTE,
                 packet->END_BYTE, packet->BYTE_VAL_FLAG);
-        
+        */
         //if what was asked cannot be done, do not continue
         if(packet->ERR_NO != SUCCESS &&  packet->ERR_NO != WARNING_EOF_REACH) {
-            printf("REQUEST NOT GOOD!\n");
             continue;
         }
 
@@ -177,16 +177,11 @@ int main(int argc, char *argv[])
             /* Go get the file and write it to standard output. */
             while (1) {
                 bytes = read(sa, buf, BUF_SIZE); /* read from socket */
-                printf("We received something!, bytes received: %d\n", bytes);
                 if (bytes <= 0) {
-                    printf("Ending program\n");
                     break;
                 }
-                printf("We got here?\n");
                 fwrite(buf, bytes, 1,  fp);
-                printf("We wrote once!\n");
             }
-
         }
         else {
             /* Get and return the file. */
@@ -198,6 +193,7 @@ int main(int argc, char *argv[])
             counter = 0; prev_percent = 0;
             printf("END: %d, START: %d, SIZE_FILE: %d\n", end, start, size_file);
             int bytes_to_send = end-start;
+            int percent_sent;
             while (1) {
                     bytes = fread(buf, 1, sizeof(buf), fp);	                    /* read from file */
                     if (bytes <= 0) {
@@ -206,11 +202,11 @@ int main(int argc, char *argv[])
                         break;		                                        /* check for end of file */ 
                     }
                     counter += bytes;
-                    printf("Counter: %d, prev_percent: %d\n", counter, prev_percent);
-                    //printf("Calc value: %d\n", ((int)(((double)counter)/bytes_to_send))*100);
+                    percent_sent = (int)((((double)counter)/bytes_to_send)*100);
+                    
                     if(DEBUG) {
-                        if(((int)(((double)counter)/bytes_to_send))*100 > prev_percent) {
-                            prev_percent = (int)((double)counter/bytes_to_send)*100;
+                        while(prev_percent+10 <= percent_sent) {
+                            prev_percent += 10;
                             printf("Sent %d%% of %s\n", prev_percent, file_name);
                         }
                     }
