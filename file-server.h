@@ -60,6 +60,7 @@ typedef struct MSG_PACKET {
     uint32_t START_BYTE;
     uint32_t END_BYTE;
     uint8_t BYTE_VAL_FLAG;
+    char FILE_NAME[256];
 } MSG_PACKET;
 
 void fatal(char *string)
@@ -68,4 +69,18 @@ void fatal(char *string)
   exit(1);
 }
 
+void read_packet(int socket, unsigned int size_p, void*buf)
+{
+    int bytes_read = 0;
+    int bytes_rec;
+    while(bytes_read < size_p) {
+        bytes_rec = read(socket, buf+bytes_read, size_p-bytes_read);
+        if(bytes_rec < 1)
+        {
+            printf("Failure in reading from socket\n");
+            exit(1);
+        }
+    bytes_read += bytes_rec;
+    }
+}
 #endif  //FILE_SERVER_H

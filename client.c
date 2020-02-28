@@ -144,7 +144,7 @@ void parse_args(int argc, char** argv, int* start_byte, int* end_byte, int* writ
  *              @rw        : determines read or write to server based on prev flags
  * purpose :    provide a method of packaging a message to send to server
  */
-void pack_start_message(MSG_PACKET* packet, int start_byte, int end_byte, int rw)
+void pack_start_message(MSG_PACKET* packet, int start_byte, int end_byte, int rw, char*file_name)
 {
     enum BYTE_VAL_FLAG byte_select_flag = BYTE_RANGE_INV;
     //Check if we are given null ptr
@@ -157,6 +157,7 @@ void pack_start_message(MSG_PACKET* packet, int start_byte, int end_byte, int rw
     //If we are attempting to send a file, we only care about message type field
     if(rw) {
         packet->MSG_TYPE = CLIENT_TX;
+        strcpy(packet->FILE_NAME, file_name);
         return;
     }
     else
@@ -176,6 +177,7 @@ void pack_start_message(MSG_PACKET* packet, int start_byte, int end_byte, int rw
     packet->START_BYTE = start_byte;
     packet->END_BYTE = end_byte;
     packet->BYTE_VAL_FLAG = byte_select_flag;
+    strcpy(packet->FILE_NAME, file_name);
 }
 
 /******
@@ -262,7 +264,13 @@ int main(int argc, char **argv)
       }
       //printf("Args: %s\n", argv[i]);
       count++;
-  }       
+  }
+
+  if(strlen(file_name)+1 > 256) {
+      printf("ERROR: maximum file name is 255 characters.\n");
+      exit(1);
+  }
+      
       
   //Based on print_instructions, we assume ALWAYS that IP addr is argv[1]
   h = gethostbyname(host_name);		/* look up host's IP address */
@@ -285,10 +293,10 @@ int main(int argc, char **argv)
   if (c < 0) fatal("connect failed");
 
   /* We are expecting that final argument is filename, ALWAYS */
-  write(s, file_name, strlen(file_name)+1);
+  //write(s, file_name, strlen(file_name)+1);
   
   //After file name write, Server is expecting our negotiation packet
-  pack_start_message(packet, start_byte, end_byte, rw);     //for write, active high
+  pack_start_message(packet, start_byte, end_byte, rw, file_name);     //for write, active high
   if(packet == NULL) {
       printf("Failed to create Packet!\n");
       exit(1);
@@ -296,7 +304,7 @@ int main(int argc, char **argv)
 
   write(s, packet, sizeof(MSG_PACKET));                     //Write our packet to socket
 
-  /* Debug stuff
+  /* Debug stuff 
   if(!packet)
       printf("PACKET IS NULL!?\n");
   else
@@ -304,10 +312,17 @@ int main(int argc, char **argv)
           packet->MSG_TYPE, packet->ERR_NO, packet->START_BYTE,
           packet->END_BYTE, packet->BYTE_VAL_FLAG);
   */  
-  read(s, buf, BUF_SIZE);                                   //We are expecting a reply
+  //read(s, buf, BUF_SIZE);                                   //We are expecting a reply
+  read_packet(s, sizeof(MSG_PACKET), buf);
   memcpy(packet, buf, sizeof(MSG_PACKET));                  //copy the buffer memory over
+
+  /*
+  printf("REC PACKET!\nMSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n",
+          packet->MSG_TYPE, packet->ERR_NO, packet->START_BYTE,
+          packet->END_BYTE, packet->BYTE_VAL_FLAG);
+  */
+
   if(!decipher_server_reply(packet)){                        //error checking
-      printf("Failure in deciphering packet from server!\n");
       exit(1);
   }
 

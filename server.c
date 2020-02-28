@@ -23,7 +23,10 @@ int file_size(char * file_name) {
     return sz_file;
 }
 
-void eval_client_request(MSG_PACKET* packet, char* file_name, int*start, int*end, int*size_file, int*rw) {
+char* eval_client_request(MSG_PACKET* packet, int*start, int*end, int*size_file, int*rw) {
+    char* file_name = malloc(strlen(packet->FILE_NAME)+1);
+    strcpy(file_name, packet->FILE_NAME);
+    
     //Check header
     //If TX, we do not care about rest of packet
     if(packet->MSG_TYPE == CLIENT_TX){
@@ -32,7 +35,8 @@ void eval_client_request(MSG_PACKET* packet, char* file_name, int*start, int*end
             packet->ERR_NO = FAIL_NAME_EXIST;
         else
             packet->ERR_NO = SUCCESS;
-        return;
+        
+        return file_name;
     }
     //IF RX, we continue to other packet portions
     else if(packet->MSG_TYPE == CLIENT_REC) {
@@ -42,19 +46,19 @@ void eval_client_request(MSG_PACKET* packet, char* file_name, int*start, int*end
             *size_file = file_size(file_name);
             if(*size_file < 0) {
                 packet->ERR_NO = FAIL_UNKNOWN;
-                return;
+                return file_name;
             }
         }
         else {
             packet->ERR_NO = FAIL_NAME_DN_EXIST;
-            return;
+            return file_name;
         }
     }
     //We only have the two, if we get here bad stuff happened
     else {
         packet->MSG_TYPE == CLIENT_TX;
         packet->ERR_NO = FAIL_UNKNOWN;
-        return;
+        return file_name;
     }
 
     //here we check the byteflag, to see what values to set
@@ -76,7 +80,7 @@ void eval_client_request(MSG_PACKET* packet, char* file_name, int*start, int*end
 
         default:
             packet->ERR_NO = FAIL_UNKNOWN;
-            return;
+            return file_name;
     }
 
     //printf("Size of File: %d, start: %d, start > size: %d\n", *size_file, *start, *start > *size_file);
@@ -87,6 +91,7 @@ void eval_client_request(MSG_PACKET* packet, char* file_name, int*start, int*end
         packet->ERR_NO = WARNING_EOF_REACH;
         *end = *size_file;
     }
+    return file_name;
 }
 
 int main(int argc, char *argv[])
@@ -133,28 +138,32 @@ int main(int argc, char *argv[])
         MSG_PACKET* packet;
 
         //Handle file_name from client
-        read(sa, buf, BUF_SIZE);		                             //read file_name
-        file_name = malloc(sizeof(char)* (strlen(buf)+1));           //Allocate mem
-        strcpy(file_name, buf);                                      //copy filename
+        // read(sa, buf, BUF_SIZE);		                             //read file_name
+        //file_name = malloc(sizeof(char)* (strlen(buf)+1));           //Allocate mem
+        //strcpy(file_name, buf);                                      //copy filename
 
         //Handle packet
-        read(sa, buf, BUF_SIZE);
+        //read(sa, buf, BUF_SIZE);
+        read_packet(sa, sizeof(MSG_PACKET), buf);
         packet = malloc(sizeof(MSG_PACKET));                         //Allocate MEM
         memcpy(packet, buf, sizeof(MSG_PACKET));                     //Copy to ptr
         
-        /*printf("RECEIVED PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n", 
+        /*
+        printf("RECEIVED PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n", 
                 packet->MSG_TYPE, packet->ERR_NO, packet->START_BYTE, 
                 packet->END_BYTE, packet->BYTE_VAL_FLAG); 
         */
         //Generate the reply packet, and setup our values
-        eval_client_request(packet, file_name, &start, &end, &size_file, &rw);
+        file_name = eval_client_request(packet, &start, &end, &size_file, &rw);
         
         write(sa, packet, sizeof(MSG_PACKET));
-
-        /*printf("SENT PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n",
+        
+        /*
+        printf("SENT PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n",
                 packet->MSG_TYPE, packet->ERR_NO, packet->START_BYTE,
                 packet->END_BYTE, packet->BYTE_VAL_FLAG);
         */
+
         //if what was asked cannot be done, do not continue
         if(packet->ERR_NO != SUCCESS &&  packet->ERR_NO != WARNING_EOF_REACH) {
             continue;
