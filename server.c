@@ -83,9 +83,10 @@ void eval_client_request(MSG_PACKET* packet, char* file_name, int*start, int*end
 
     if(*start >= *end || *start > *size_file)
         packet->ERR_NO = FAIL_BYTE_RANGE_INV;
-    else if(*end > *size_file)
+    else if(*end > *size_file) {
         packet->ERR_NO = WARNING_EOF_REACH;
         *end = *size_file;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -147,7 +148,7 @@ int main(int argc, char *argv[])
         */
         //Generate the reply packet, and setup our values
         eval_client_request(packet, file_name, &start, &end, &size_file, &rw);
-
+        
         write(sa, packet, sizeof(MSG_PACKET));
 
         /*printf("SENT PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n",
@@ -191,16 +192,20 @@ int main(int argc, char *argv[])
             //setup the file read
             fseek(fp, start, SEEK_SET);
             counter = 0; prev_percent = 0;
-            printf("END: %d, START: %d, SIZE_FILE: %d\n", end, start, size_file);
+            
             int bytes_to_send = end-start;
             int percent_sent;
             while (1) {
-                    bytes = fread(buf, 1, sizeof(buf), fp);	                    /* read from file */
+                    bytes = counter == end ? 0 : fread(buf, 1, sizeof(buf), fp);	                    /* read from file */
                     if (bytes <= 0) {
                         if(DEBUG)
                             printf("Finished sending %s to %s\n", file_name, str_ip);
                         break;		                                        /* check for end of file */ 
                     }
+
+                    if((bytes + counter) > end)
+                        bytes = bytes_to_send-counter;
+
                     counter += bytes;
                     percent_sent = (int)((((double)counter)/bytes_to_send)*100);
                     

@@ -46,7 +46,6 @@ int isCharNum(char* input)
 
     for(i = 0; i < strlen(input); i++)
     {
-        printf("Value is: %c., val: %d\n", input[i], input[i] == '\0');
         if(!isdigit(input[i]))
             return 0;
     }
@@ -110,7 +109,6 @@ void parse_args(int argc, char** argv, int* start_byte, int* end_byte, int* writ
                     print_instructions();
                     exit(1);
                 }
-                printf("Write enabled!\n");
                 *write = 1;
                 break;
 
@@ -262,13 +260,13 @@ int main(int argc, char **argv)
           file_name = malloc(strlen(argv[i])+1);
           strcpy(file_name, argv[i]);
       }
-      printf("Args: %s\n", argv[i]);
+      //printf("Args: %s\n", argv[i]);
       count++;
   }       
       
   //Based on print_instructions, we assume ALWAYS that IP addr is argv[1]
   h = gethostbyname(host_name);		/* look up host's IP address */
-  printf("HOST NAME: %s\n", host_name);
+  //printf("HOST NAME: %s\n", host_name);
   if (!h) {
      printf("FAILED TO GET HOST: %s\n", host_name);
      exit(1);
@@ -290,35 +288,42 @@ int main(int argc, char **argv)
   write(s, file_name, strlen(file_name)+1);
   
   //After file name write, Server is expecting our negotiation packet
-  printf("PACKAGING AND SENDING PACKET\n");
   pack_start_message(packet, start_byte, end_byte, rw);     //for write, active high
-  if(packet == NULL)
-      printf("Packet message is failing!!!\n");
+  if(packet == NULL) {
+      printf("Failed to create Packet!\n");
+      exit(1);
+  }
+
   write(s, packet, sizeof(MSG_PACKET));                     //Write our packet to socket
+
+  /* Debug stuff
   if(!packet)
       printf("PACKET IS NULL!?\n");
   else
       printf("SENT PACKET!\nMSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n",
           packet->MSG_TYPE, packet->ERR_NO, packet->START_BYTE,
           packet->END_BYTE, packet->BYTE_VAL_FLAG);
+  */  
   read(s, buf, BUF_SIZE);                                   //We are expecting a reply
-  printf("READ PACKET!\n");
   memcpy(packet, buf, sizeof(MSG_PACKET));                  //copy the buffer memory over
-  if(!decipher_server_reply(packet))                        //error checking
+  if(!decipher_server_reply(packet)){                        //error checking
+      printf("Failure in deciphering packet from server!\n");
       exit(1);
+  }
 
   FILE *fileIO;
+  /*
   char dirPath[] = "out/";
   char* filePath = malloc((strlen(dirPath) + strlen(file_name)+2)*sizeof(char));
   if(filePath == NULL) {
       printf("FAILED TO MALLOC\n");
   }
-  printf("Successfully opened file!\n");
   sprintf(filePath, "%s%s", dirPath, file_name);
   printf("Path made: %s\n", filePath);
+  */
 
   if(rw) {
-    fileIO = fopen(filePath, "rb");
+    fileIO = fopen(file_name, "rb");
     if(fileIO == NULL) {
         printf("FAILURE IN OPENING FILE: Ensure path exists!\n");
         exit(1);
@@ -332,11 +337,11 @@ int main(int argc, char **argv)
         }
 
         write(s, buf, bytes); /* read from socket */
-        printf("Sent %d bytes\n", bytes);
+        // printf("Sent %d bytes\n", bytes);
     }
   }
   else {
-    fileIO = fopen(filePath, "wb");
+    fileIO = fopen(file_name, "wb");
     if(fileIO == NULL) {
         printf("FAILURE IN OPENING FILE!\n");
         exit(1);
@@ -345,20 +350,17 @@ int main(int argc, char **argv)
     /* Go get the file and write it to standard output. */
     while (1) {
             bytes = read(s, buf, BUF_SIZE);	/* read from socket */
-            printf("We received something!, bytes received: %d\n", bytes);
+            //printf("We received something!, bytes received: %d\n", bytes);
             if (bytes <= 0) {
-                printf("Ending program\n");
                 break;
             }
-            printf("We got here?\n");
             fwrite(buf, bytes, 1,  fileIO);
-            printf("We wrote once!\n");
     }
   }
 
   fclose(fileIO);
   //free all malloced mem
-  free(filePath);
+  //free(filePath);
   free(packet);
   free(file_name);
   free(host_name);
