@@ -216,9 +216,9 @@ int main(int argc, char *argv[])
                     }
                     write(sa, buf, bytes);		                            /* write bytes to socket */
             }
+        }
         fclose(fp);			                                            /* close file */
         close(sa);			                                            /* close connection */
-        free(file_name);                                                /* free memory malloced */
-        }
+        free(file_name);                                                /* free memory malloc*/
   }
 }
