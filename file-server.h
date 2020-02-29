@@ -21,8 +21,8 @@
 #define BUF_SIZE 4096		        /* block transfer size */
 
 
-char good_html_request_string[] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
-char bad_html_request_string[]  = "<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>404 Error</title>\r\n</head>\r\n<body>\r\n<h1>404 Error: File not found in server</h1>\r\n</body>\r\n<html>\r\n";
+char good_html_request_str[] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+char file_not_found_str[]  = "<!DOCTYPE html>\r\n<html>\r\n<head>\r\n<title>404 Error</title>\r\n</head>\r\n<body>\r\n<h1>404 Error: File not found in server</h1>\r\n</body>\r\n<html>\r\n";
 
 /*****
  * Enums defined to negotiate type of message information sent from end to end

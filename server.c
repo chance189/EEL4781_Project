@@ -114,8 +114,17 @@ char* isget_req(char* buf) {
     get_buf[i] = '\0';                          //add null terminator to string
     if(strcasecmp(get_buf, "GET")==0)
     {
-        file_name = malloc(sizeof(get_buf)+1);
-        strcpy(file_name, get_buf);
+        i+=2;                                   //incr and ignore forward slash
+        file_name = malloc(256*sizeof(char));
+        int j = 0;
+        //printf("Size of file: %lu\n", sizeof(file_name));
+        while(!isspace(buf[i]) && j < (256-1)) {
+            file_name[j] = buf[i];
+            //printf("Here is our c: %c\n", file_name[j]);
+            i++;
+            j++;
+        }
+        file_name[j] = '\0';
         return file_name;
     }
     else
@@ -137,21 +146,21 @@ void handle_client_req(int sa, char* buf, char* str_ip) {
     packet = malloc(sizeof(MSG_PACKET));                         //Allocate MEM
     memcpy(packet, buf, sizeof(MSG_PACKET));                     //Copy to ptr
 
-    ///*
+    /*
     printf("RECEIVED PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n", 
         packet->MSG_TYPE, packet->ERR_NO, packet->START_BYTE, 
         packet->END_BYTE, packet->BYTE_VAL_FLAG); 
-    //*/
+    */
     //Generate the reply packet, and setup our values
     file_name = eval_client_request(packet, &start, &end, &size_file, &rw);
     
     write(sa, packet, sizeof(MSG_PACKET));
 
-    ///*
+    /*
     printf("SENT PACKET!:\n MSG_HEADER: %u, ERR: %u, START: %u, END, %u, FLAG: %u\n",
         packet->MSG_TYPE, packet->ERR_NO, packet->START_BYTE,
         packet->END_BYTE, packet->BYTE_VAL_FLAG);
-    //*/
+    */
 
     //if what was asked cannot be done, do not continue
     if(packet->ERR_NO != SUCCESS &&  packet->ERR_NO != WARNING_EOF_REACH) {
@@ -197,7 +206,7 @@ void handle_client_req(int sa, char* buf, char* str_ip) {
             if (bytes <= 0) {
                 if(DEBUG)
                     printf("Finished sending %s to %s\n", file_name, str_ip);
-                    break;		                                        /* check for end of file */ 
+                break;		                                        /* check for end of file */ 
             }
 
             if((bytes + counter) > end)
@@ -220,8 +229,61 @@ void handle_client_req(int sa, char* buf, char* str_ip) {
     free(file_name);                                                /* free memory malloc*/
 }
 
-void handle_get_req(int sa, char* buf, char* file_name, char* client_ip) {
-    printf("We got this in the buffer: %s, from %s\n", buf, client_ip);
+/*****
+ * function:    handle_get_req
+ * params  :    @sa         : socket accept int
+ *              @buf        : buffer with the read request
+ *              @file_name  : file_name retrieved by the isget_req
+ *              @client_ip  : for debug statements
+ */
+void handle_get_req(int sa, char* buf, char* file_name, char* str_ip) {
+    if(DEBUG) {
+        printf("Sending %s to %s\n", file_name, str_ip);
+    }
+    //printf("This is in our buffer: %s\n", buf);
+    memset(buf, '\0', BUF_SIZE);                                    //clean buffer
+    strcpy(buf, good_html_request_str);                             //copy in good request 
+    write(sa, buf, BUF_SIZE);                                       //send
+ 
+    if( access(file_name, F_OK) == -1) {                            //filename extracted is not valid
+       memset(buf, '\0', BUF_SIZE);
+       strcpy(buf, file_not_found_str);
+       write(sa, buf, BUF_SIZE);
+       free(file_name);
+       close(sa);
+       return; 
+    }
+
+    //reached here, so filename does exist
+    FILE* fp;
+    fp = fopen(file_name, "rb");
+
+    if(fp == NULL) fatal("FILE OPEN ERROR IN HANDLE GET REQ");
+    
+    int size_file = file_size(file_name);    
+    int bytes, counter = 0, prev_percent=0, percent_sent=0;
+    while (1) {
+        bytes = fread(buf, 1, sizeof(buf), fp); 
+        if (bytes <= 0) {
+            if(DEBUG)
+                printf("Finished sending %s to %s\n", file_name, str_ip);
+            break;                                              /* check for end of file */
+        }
+
+        counter += bytes;
+        percent_sent = (int)((((double)counter)/size_file)*100);
+
+        if(DEBUG) {
+            while(prev_percent+10 <= percent_sent) {
+                prev_percent += 10;
+                printf("Sent %d%% of %s\n", prev_percent, file_name);
+            }
+        }
+        write(sa, buf, bytes);                                  /* write bytes to socket */
+    }
+    fclose(fp);
+    free(file_name);
+    close(sa);
 }
 
 /*****
@@ -249,6 +311,8 @@ void accept_client_request(void *args) {
     else {
         handle_get_req(sa, buf, file_name, str_ip);
     }
+    free(my_args);                                                  //was malloced in main
+    free(str_ip);
 }
 
 int main(int argc, char *argv[])
