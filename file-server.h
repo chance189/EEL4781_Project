@@ -17,7 +17,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define SERVER_PORT 2345		/* arbitrary, but client & server must agree */
+#define SERVER_PORT 8000		/* arbitrary, but client & server must agree */
 #define BUF_SIZE 4096		        /* block transfer size */
 
 
