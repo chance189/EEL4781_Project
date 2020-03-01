@@ -4,13 +4,14 @@
 #include <pthread.h>
 
 #define QUEUE_SIZE 10
+#define DEBUG 0
 
 typedef struct args_to_thread {
     int socket_accept;
     char client_ip_str[INET_ADDRSTRLEN];
 } args_to_thread;
 
-int DEBUG = 1;   //define global for debug
+//int DEBUG = 1;   //define global for debug
 
 //Assumes file exists already when called
 int file_size(char * file_name) {
